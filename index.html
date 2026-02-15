@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MiniBookstore — Home</title>
+  <link rel="stylesheet" href="css/variables.css" />
+  <link rel="stylesheet" href="css/layout.css" />
+  <link rel="stylesheet" href="css/components.css" />
+</head>
+<body>
+  <div id="header-container"></div>
+  <main class="main">
+    <h1 id="page-title" class="page-title">Books</h1>
+    <div id="product-grid" class="product-grid" aria-label="Product list"></div>
+  </main>
+  <!-- Script order: config → state (cart/orders) → utils → api → components → page -->
+  <script src="js/config.js"></script>
+  <script src="js/state/cart.js"></script>
+  <script src="js/state/orders.js"></script>
+  <script src="js/state/user.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/api/mockApi.js"></script>
+  <script src="js/components/header.js"></script>
+  <script src="js/pages/home.js"></script>
+</body>
+</html>
