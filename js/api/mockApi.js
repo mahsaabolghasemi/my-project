@@ -59,3 +59,18 @@ function getBookById(id) {
 
 // Expose for use in pages (no bundler; scripts load in global scope).
 window.mockApi = { getBooks, searchBooks, getBookById };
+
+(function useBookStoreApiWhenConfigured() {
+  if (typeof CONFIG === 'undefined' || !CONFIG.API_BASE_URL || !window.bookStoreApi) return;
+  window.mockApi = {
+    getBooks: function () {
+      return window.bookStoreApi.getBooks();
+    },
+    searchBooks: function (query) {
+      return window.bookStoreApi.searchBooks(query);
+    },
+    getBookById: function (id) {
+      return window.bookStoreApi.getBookById(id);
+    },
+  };
+})();
