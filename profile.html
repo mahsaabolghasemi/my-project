@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>کتابفروشی — پروفایل و سفارش‌ها</title>
+    <link rel="stylesheet" href="css/variables.css" />
+    <link rel="stylesheet" href="css/layout.css" />
+    <link rel="stylesheet" href="css/components.css" />
+    <link rel="stylesheet" href="css/profile.css" />
+  </head>
+  <body>
+    <div id="header-container"></div>
+    <main class="main profile-page">
+      <h1 class="profile-page__title">پروفایل</h1>
+
+      <section id="profile-view" class="profile-view" aria-labelledby="profile-heading">
+        <h2 id="profile-heading" class="profile-view__heading">اطلاعات کاربری</h2>
+        <div class="profile-fields">
+          <div class="profile-field">
+            <label>نام نمایشی</label>
+            <div id="profile-name" class="profile-field__value">—</div>
+          </div>
+          <div class="profile-field">
+            <label>نام کاربری</label>
+            <div id="profile-username" class="profile-field__value">—</div>
+          </div>
+          <div class="profile-field">
+            <label>رمز عبور</label>
+            <div id="profile-password-mask" class="profile-field__value profile-field__value--masked" aria-hidden="true">
+              ••••••••
+            </div>
+          </div>
+        </div>
+        <div class="profile-page__actions">
+          <button type="button" class="btn btn--danger" id="btn-profile-logout">خروج از حساب</button>
+        </div>
+      </section>
+
+      <section id="order-history" class="profile-order-history" aria-labelledby="orders-heading">
+        <h2 id="orders-heading" class="profile-order-history__title">تاریخچهٔ سفارشات</h2>
+        <div id="profile-orders-root"></div>
+        <div id="order-detail-container"></div>
+      </section>
+    </main>
+    <script src="js/config.js"></script>
+    <script src="src/data/users.data.js"></script>
+    <script src="js/api/bookStoreApi.js"></script>
+    <script src="js/state/user.js"></script>
+    <script src="js/state/cart.js"></script>
+    <script src="js/state/orders.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/api/mockApi.js"></script>
+    <script src="js/components/header.js"></script>
+    <script src="js/pages/profile.js"></script>
+  </body>
+</html>

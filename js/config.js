@@ -4,9 +4,10 @@
  */
 const CONFIG = {
   /**
-   * Book Store API base (e.g. http://192.168.9.183:3000). Leave empty to use the in-browser mock.
+   * Book Store API base. Example (LAN dev server): http://192.168.9.183:3000
+   * Leave empty to use the in-browser mock (js/api/mockApi.js).
    */
-  API_BASE_URL: 'http://192.168.9.183:3000',
+  API_BASE_URL: '',
   /** Header name for the session token (default Authorization). */
   API_AUTH_HEADER: 'Authorization',
   /** Prefix before the token (default "Bearer "). Set to "" to send the raw token. */

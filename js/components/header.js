@@ -19,32 +19,66 @@
     return typeof userState !== 'undefined' && userState.isLoggedIn ? userState.isLoggedIn() : false;
   }
 
-  function renderBadge(count) {
+  function renderCountBadge(count) {
     if (count <= 0) return '';
-    return `<span class="badge" data-count="${count}" aria-label="${count} items in cart">${count}</span>`;
+    return `<span class="nav-badge__count" aria-label="${count} قلم در سبد">${count}</span>`;
   }
 
-  function renderProfileLink() {
+  function renderCartBadge() {
+    const count = getCartCount();
+    return `<a href="cart.html" class="nav-badge nav-badge--cart" aria-label="سبد خرید">
+      <span class="nav-badge__icon" aria-hidden="true">🛒</span>
+      <span class="nav-badge__label">سبد</span>${renderCountBadge(count)}
+    </a>`;
+  }
+
+  function renderProfileBadge() {
     const user = getUser();
     if (user) {
-      return `<a href="index.html#profile" id="profile-link" aria-label="Profile">👤 ${user.name || user.email}</a>`;
+      const initial = (user.name || user.username || '?').trim().charAt(0).toUpperCase();
+      return `<a href="profile.html#/profile" id="profile-link" class="nav-badge nav-badge--profile nav-badge--profile-avatar" aria-label="پروفایل" title="پروفایل">
+        <span class="nav-badge__avatar" aria-hidden="true">${initial}</span>
+        <span class="nav-badge__label">پروفایل</span>
+      </a>`;
     }
-    return `<a href="login.html" id="login-link" aria-label="Login">Login</a>`;
+    return `<a href="login.html" id="login-link" class="nav-badge nav-badge--profile" aria-label="ورود">
+      <span class="nav-badge__icon" aria-hidden="true">👤</span>
+      <span class="nav-badge__label">ورود</span>
+    </a>`;
+  }
+
+  function getSearchQueryFromUrl() {
+    try {
+      var params = new URLSearchParams(window.location.search);
+      return params.get('q') || '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function escapeAttr(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
   }
 
   function render() {
     const count = getCartCount();
+    const searchValue = getSearchQueryFromUrl();
+    const searchValueAttr = searchValue ? ' value="' + escapeAttr(searchValue) + '"' : '';
     container.innerHTML = `
       <header class="app-header">
         <div class="app-header__inner">
-          <a href="index.html" class="app-header__logo">MiniBookstore</a>
-          <form class="app-header__search" action="plp.html" method="get" role="search" aria-label="Search books">
-            <input type="search" name="q" placeholder="Search books…" value="" autocomplete="off" />
-            <button type="submit">Search</button>
+          <a href="index.html" class="app-header__logo">کتابفروشی</a>
+          <form class="app-header__search" action="plp.html" method="get" role="search" aria-label="جستجوی کتاب‌ها">
+            <input type="search" name="q" placeholder="جستجوی کتاب‌ها…"${searchValueAttr} autocomplete="off" />
+            <button type="submit">جستجو</button>
           </form>
-          <nav class="app-header__nav" aria-label="Main navigation">
-            <a href="cart.html" aria-label="Cart">Cart ${renderBadge(count)}</a>
-            ${renderProfileLink()}
+          <nav class="app-header__nav" aria-label="منوی اصلی">
+            ${renderCartBadge()}
+            ${renderProfileBadge()}
           </nav>
         </div>
       </header>
@@ -56,21 +90,20 @@
   // Re-render when cart might have changed
   window.header = {
     updateBadge: function () {
-      const badge = container.querySelector('.badge');
       const count = getCartCount();
-      const cartLink = container.querySelector('.app-header__nav a[href="cart.html"]');
-      if (cartLink) {
-        const existingBadge = cartLink.querySelector('.badge');
-        if (existingBadge) existingBadge.remove();
-        if (count > 0) cartLink.insertAdjacentHTML('beforeend', ' ' + renderBadge(count).trim());
+      const cartBadge = container.querySelector('.nav-badge--cart');
+      if (cartBadge) {
+        const existingCount = cartBadge.querySelector('.nav-badge__count');
+        if (existingCount) existingCount.remove();
+        if (count > 0) cartBadge.insertAdjacentHTML('beforeend', renderCountBadge(count));
       }
     },
     updateProfile: function () {
       const nav = container.querySelector('.app-header__nav');
       if (nav) {
-        const profileLink = nav.querySelector('#profile-link, #login-link');
-        if (profileLink) {
-          profileLink.outerHTML = renderProfileLink();
+        const profileBadge = nav.querySelector('#profile-link, #login-link');
+        if (profileBadge) {
+          profileBadge.outerHTML = renderProfileBadge();
         }
       }
     },

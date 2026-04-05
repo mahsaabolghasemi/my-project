@@ -1,0 +1,10 @@
+# Netlify: connect repo or drag-drop folder at https://app.netlify.com/drop
+[build]
+  publish = "."
+  command = "echo static"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"

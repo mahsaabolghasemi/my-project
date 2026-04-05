@@ -1,9 +1,43 @@
 /**
- * Order history: list orders, click row to see details (including purchased PDFs).
+ * Profile + order history (API GET /orders when configured).
  */
 (function () {
-  const rootEl = document.getElementById('orders-root');
+  const rootEl = document.getElementById('profile-orders-root');
   if (!rootEl) return;
+
+  if (typeof userState === 'undefined' || !userState.isLoggedIn || !userState.isLoggedIn()) {
+    window.location.href = 'login.html?return=' + encodeURIComponent('profile.html#/profile');
+    return;
+  }
+
+  const user = userState.getUser();
+  if (user) {
+    const nameEl = document.getElementById('profile-name');
+    const userEl = document.getElementById('profile-username');
+    if (nameEl) nameEl.textContent = user.name || user.username || '—';
+    if (userEl) userEl.textContent = user.username || '—';
+  }
+
+  const logoutBtn = document.getElementById('btn-profile-logout');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', function () {
+      Promise.resolve(userState.logout()).then(function () {
+        window.location.href = 'index.html';
+      });
+    });
+  }
+
+  function scrollToHash() {
+    var h = location.hash;
+    if (h === '#/profile' || h === '#profile') {
+      document.getElementById('profile-view')?.scrollIntoView({ behavior: 'smooth' });
+    } else if (h === '#/orders' || h === '#order-history' || h === '#/order-history') {
+      document.getElementById('order-history')?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }
+
+  window.addEventListener('hashchange', scrollToHash);
+  scrollToHash();
 
   function escapeHtml(text) {
     const div = document.createElement('div');
@@ -41,7 +75,7 @@
         <td>${escapeHtml(date)}</td>
         <td>${order.items.length} قلم</td>
         <td><strong>${total}</strong></td>
-        <td><button class="btn btn--secondary btn--sm btn-view-detail">مشاهدهٔ جزئیات</button></td>
+        <td><button type="button" class="btn btn--secondary btn--sm btn-view-detail">مشاهدهٔ جزئیات</button></td>
       </tr>
     `;
   }
@@ -49,14 +83,16 @@
   function renderOrderDetail(order) {
     const date = formatDate(order.date);
     const total = formatPrice(order.total);
-    
-    const itemsHtml = order.items.map(function (item) {
-      const itemTotal = formatPrice(item.price * item.quantity);
-      const pdfLink = item.pdfUrl && item.pdfUrl !== '#'
-        ? `<a href="${escapeHtml(item.pdfUrl)}" target="_blank" class="btn btn--primary btn--sm">📥 دریافت PDF</a>`
-        : '<span class="text-muted">PDF موجود نیست</span>';
-      
-      return `
+
+    const itemsHtml = order.items
+      .map(function (item) {
+        const itemTotal = formatPrice(item.price * item.quantity);
+        const pdfLink =
+          item.pdfUrl && item.pdfUrl !== '#'
+            ? `<a href="${escapeHtml(item.pdfUrl)}" target="_blank" class="btn btn--primary btn--sm">📥 دریافت PDF</a>`
+            : '<span class="text-muted">PDF موجود نیست</span>';
+
+        return `
         <div class="order-detail-item">
           <div class="order-detail-item__info">
             <h4>${escapeHtml(item.name)}</h4>
@@ -67,13 +103,14 @@
           </div>
         </div>
       `;
-    }).join('');
+      })
+      .join('');
 
     return `
       <div class="order-detail" data-order-id="${escapeHtml(order.id)}">
         <div class="order-detail__header">
           <h3>جزئیات سفارش: ${escapeHtml(order.id)}</h3>
-          <button class="btn btn--secondary btn--sm btn-close-detail">بستن</button>
+          <button type="button" class="btn btn--secondary btn--sm btn-close-detail">بستن</button>
         </div>
         <div class="order-detail__info">
           <p><strong>تاریخ:</strong> ${escapeHtml(date)}</p>
@@ -87,7 +124,18 @@
     `;
   }
 
+  function usesRemoteApi() {
+    return (
+      typeof CONFIG !== 'undefined' &&
+      CONFIG.API_BASE_URL &&
+      typeof window.bookStoreApi !== 'undefined'
+    );
+  }
+
   function renderOrders(orders) {
+    const detailHost = document.getElementById('order-detail-container');
+    if (detailHost) detailHost.innerHTML = '';
+
     if (!orders || orders.length === 0) {
       rootEl.innerHTML = `
         <div class="empty-state">
@@ -113,19 +161,13 @@
           ${orders.map(renderOrderRow).join('')}
         </tbody>
       </table>
-      <div id="order-detail-container"></div>
     `;
 
-    attachEventListeners();
-  }
-
-  function attachEventListeners() {
-    const viewButtons = rootEl.querySelectorAll('.btn-view-detail');
-    viewButtons.forEach(function (btn) {
+    rootEl.querySelectorAll('.btn-view-detail').forEach(function (btn) {
       btn.addEventListener('click', function () {
         const row = btn.closest('.order-row');
-        const orderId = row.getAttribute('data-order-id');
-        showOrderDetail(orderId);
+        const orderId = row && row.getAttribute('data-order-id');
+        if (orderId) showOrderDetail(orderId);
       });
     });
   }
@@ -139,7 +181,6 @@
       const container = document.getElementById('order-detail-container');
       if (container) {
         container.innerHTML = renderOrderDetail(order);
-
         const closeBtn = container.querySelector('.btn-close-detail');
         if (closeBtn) {
           closeBtn.addEventListener('click', function () {
@@ -150,6 +191,11 @@
     }
 
     if (usesRemoteApi()) {
+      const u = userState.getUser();
+      if (!u || !u.token) {
+        alert('برای مشاهدهٔ سفارش‌ها باید با حساب سرور وارد شده باشید.');
+        return;
+      }
       window.bookStoreApi
         .getOrderById(orderId)
         .then(function (apiOrder) {
@@ -173,22 +219,12 @@
     show(order);
   }
 
-  function usesRemoteApi() {
-    return (
-      typeof CONFIG !== 'undefined' &&
-      CONFIG.API_BASE_URL &&
-      typeof window.bookStoreApi !== 'undefined'
-    );
-  }
-
   function loadAndRender() {
     if (usesRemoteApi()) {
-      const u = typeof userState !== 'undefined' && userState.getUser ? userState.getUser() : null;
+      const u = userState.getUser();
       if (!u || !u.token) {
         rootEl.innerHTML =
-          '<div class="empty-state"><p>برای مشاهدهٔ سفارش‌ها وارد شوید.</p><a href="login.html?return=' +
-          encodeURIComponent('profile.html#order-history') +
-          '" class="btn btn--primary">ورود</a></div>';
+          '<div class="empty-state"><p>برای نمایش سفارش‌های سرور، ابتدا با حسابی که روی سرور معتبر است وارد شوید (توکن API).</p></div>';
         return;
       }
       window.bookStoreApi
@@ -215,8 +251,7 @@
       return;
     }
 
-    const orders = ordersState.getOrders();
-    renderOrders(orders);
+    renderOrders(ordersState.getOrders());
   }
 
   function boot() {

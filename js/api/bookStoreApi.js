@@ -50,6 +50,7 @@
 
   function normalizeBook(b) {
     if (!b) return null;
+    if (Number(b.isDeleted) === 1) return null;
     const root = baseUrl();
     const id = String(b.id);
     let coverImage = b.image || '';
@@ -68,7 +69,8 @@
       genre: b.category || '',
       description: b.description || '',
       pdfUrl: '#',
-      stock: typeof b.stock === 'number' ? b.stock : undefined,
+      stock: typeof b.stock === 'number' ? b.stock : b.stock != null ? Number(b.stock) : undefined,
+      isDeleted: Number(b.isDeleted) === 1 ? 1 : 0,
     };
   }
 

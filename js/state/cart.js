@@ -1,19 +1,40 @@
 /**
- * Cart state: in-memory list + optional persistence to localStorage.
- * Single source of truth for cart; all pages use this module to add/remove/read.
+ * Cart: localStorage for guests; Book Store API /cart when logged in with token + API_BASE_URL.
  */
 
-const STORAGE_KEY = typeof CONFIG !== 'undefined' ? CONFIG.CART_STORAGE_KEY : 'minishop_cart';
+/** Must be unique per file — duplicate `const` names across classic scripts break the whole page. */
+const CART_STATE_STORAGE_KEY = typeof CONFIG !== 'undefined' ? CONFIG.CART_STORAGE_KEY : 'minishop_cart';
 
-/** @type {Array<{ id: string, name: string, price: number, image?: string, pdfUrl?: string, quantity: number }>} */
+/** @type {Array<{ id: string, name: string, price: number, image?: string, pdfUrl?: string, quantity: number, stock?: number }>} */
 let items = [];
 
-/**
- * Load cart from localStorage (if available).
- */
+function usesRemoteCart() {
+  return (
+    typeof CONFIG !== 'undefined' &&
+    CONFIG.API_BASE_URL &&
+    typeof window.bookStoreApi !== 'undefined' &&
+    typeof userState !== 'undefined' &&
+    userState.isLoggedIn &&
+    userState.isLoggedIn() &&
+    userState.getUser &&
+    userState.getUser() &&
+    userState.getUser().token
+  );
+}
+
+function effectiveStock(line) {
+  if (line.stock == null || line.stock === '') return Number.MAX_SAFE_INTEGER;
+  const n = Number(line.stock);
+  return Number.isFinite(n) && n >= 0 ? n : Number.MAX_SAFE_INTEGER;
+}
+
 function load() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    if (usesRemoteCart()) {
+      items = [];
+      return;
+    }
+    const raw = localStorage.getItem(CART_STATE_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) items = parsed;
@@ -23,42 +44,54 @@ function load() {
   }
 }
 
-/**
- * Save current cart to localStorage.
- */
 function save() {
+  if (usesRemoteCart()) return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    localStorage.setItem(CART_STATE_STORAGE_KEY, JSON.stringify(items));
   } catch (_) {}
 }
 
-/**
- * Get current cart items (copy so callers can't mutate state directly).
- * @returns {Array<{ id: string, name: string, price: number, image?: string, pdfUrl?: string, quantity: number }>}
- */
 function getItems() {
-  return items.map((item) => ({ ...item }));
+  return items.map(function (item) {
+    return { ...item };
+  });
 }
 
-/**
- * Get total number of units in cart.
- * @returns {number}
- */
 function getCount() {
-  return items.reduce((sum, item) => sum + item.quantity, 0);
+  return items.reduce(function (sum, item) {
+    return sum + item.quantity;
+  }, 0);
 }
 
 /**
- * Add a book to cart (or increase quantity if already present).
- * Pass pdfUrl so the order can show purchased PDFs in order history.
- * @param {{ id: string, name: string, title?: string, price: number, image?: string, coverImage?: string, pdfUrl?: string }} book
+ * @param {{ id: string, name?: string, title?: string, price: number, image?: string, coverImage?: string, pdfUrl?: string, stock?: number }} book
  * @param {number} [quantity=1]
+ * @returns {Promise<void>}
  */
-function add(book, quantity = 1) {
+function add(book, quantity) {
+  const qty = quantity == null || quantity < 1 ? 1 : quantity;
   const name = book.name != null ? book.name : book.title;
-  const existing = items.find((i) => i.id === book.id);
+  var rawStock = book.stock != null && book.stock !== '' ? Number(book.stock) : NaN;
+  var stockCap = Number.isFinite(rawStock) && rawStock >= 0 ? rawStock : Number.MAX_SAFE_INTEGER;
+
+  if (usesRemoteCart()) {
+    return window.bookStoreApi.addToCart(book.id, qty).then(function (cart) {
+      items = window.bookStoreApi.mapCartPayload(cart);
+      return enrichItemsStockIfNeeded();
+    });
+  }
+
+  const existing = items.find(function (i) {
+    return i.id === book.id;
+  });
+  const nextQty = (existing ? existing.quantity : 0) + qty;
+  if (nextQty > stockCap) {
+    return Promise.reject(new Error('موجودی کافی نیست؛ حداکثر ' + stockCap + ' عدد مجاز است.'));
+  }
+
   if (existing) {
-    existing.quantity += quantity;
+    existing.quantity += qty;
+    if (book.stock != null) existing.stock = Number(book.stock);
   } else {
     items.push({
       id: book.id,
@@ -66,48 +99,211 @@ function add(book, quantity = 1) {
       price: book.price,
       image: book.image || book.coverImage,
       pdfUrl: book.pdfUrl,
-      quantity,
+      quantity: qty,
+      stock: book.stock != null ? Number(book.stock) : undefined,
     });
   }
   save();
+  return Promise.resolve();
 }
 
 /**
- * Remove one unit of a product (or remove line if quantity becomes 0).
  * @param {string} productId
+ * @returns {Promise<void>}
  */
 function remove(productId) {
-  const index = items.findIndex((i) => i.id === productId);
-  if (index === -1) return;
+  if (usesRemoteCart()) {
+    const line = items.find(function (i) {
+      return i.id === productId;
+    });
+    if (!line) return Promise.resolve();
+    var next = line.quantity - 1;
+    if (next <= 0) {
+      return window.bookStoreApi.deleteCartItem(productId).then(function (cart) {
+        items = window.bookStoreApi.mapCartPayload(cart);
+        return enrichItemsStockIfNeeded();
+      });
+    }
+    return window.bookStoreApi.updateCartItem(productId, next).then(function (cart) {
+      items = window.bookStoreApi.mapCartPayload(cart);
+      return enrichItemsStockIfNeeded();
+    });
+  }
+
+  const index = items.findIndex(function (i) {
+    return i.id === productId;
+  });
+  if (index === -1) return Promise.resolve();
   items[index].quantity -= 1;
   if (items[index].quantity <= 0) items.splice(index, 1);
   save();
+  return Promise.resolve();
 }
 
 /**
- * Set quantity for a product (0 = remove line).
+ * حذف کامل یک خط از سبد
+ * @param {string} productId
+ * @returns {Promise<void>}
+ */
+function removeLine(productId) {
+  if (usesRemoteCart()) {
+    return window.bookStoreApi.deleteCartItem(productId).then(function (cart) {
+      items = window.bookStoreApi.mapCartPayload(cart);
+      return enrichItemsStockIfNeeded();
+    });
+  }
+  items = items.filter(function (i) {
+    return i.id !== productId;
+  });
+  save();
+  return Promise.resolve();
+}
+
+/**
  * @param {string} productId
  * @param {number} quantity
+ * @returns {Promise<void>}
  */
 function setQuantity(productId, quantity) {
-  if (quantity <= 0) {
-    items = items.filter((i) => i.id !== productId);
+  const line = items.find(function (i) {
+    return i.id === productId;
+  });
+  const max = line ? effectiveStock(line) : Number.MAX_SAFE_INTEGER;
+  const q = Math.min(Math.max(0, quantity), max);
+
+  if (usesRemoteCart()) {
+    if (q <= 0) {
+      return window.bookStoreApi.deleteCartItem(productId).then(function (cart) {
+        items = window.bookStoreApi.mapCartPayload(cart);
+        return enrichItemsStockIfNeeded();
+      });
+    }
+    return window.bookStoreApi.updateCartItem(productId, q).then(function (cart) {
+      items = window.bookStoreApi.mapCartPayload(cart);
+      return enrichItemsStockIfNeeded();
+    });
+  }
+
+  if (q <= 0) {
+    items = items.filter(function (i) {
+      return i.id !== productId;
+    });
   } else {
-    const existing = items.find((i) => i.id === productId);
-    if (existing) existing.quantity = quantity;
+    const existing = items.find(function (i) {
+      return i.id === productId;
+    });
+    if (existing) existing.quantity = q;
   }
   save();
+  return Promise.resolve();
 }
 
 /**
- * Clear cart (e.g. after successful order).
+ * افزایش یک واحد با رعایت سقف موجودی
+ * @param {string} productId
+ * @returns {Promise<void>}
  */
+function incrementQuantity(productId) {
+  const line = items.find(function (i) {
+    return i.id === productId;
+  });
+  if (!line) return Promise.resolve();
+  const max = effectiveStock(line);
+  if (line.quantity >= max) {
+    return Promise.reject(new Error('به حداکثر موجودی رسیده‌اید.'));
+  }
+  return setQuantity(productId, line.quantity + 1);
+}
+
 function clear() {
   items = [];
   save();
 }
 
-// Load from storage when module is first used (e.g. when script loads).
+function syncFromServerIfNeeded() {
+  if (!usesRemoteCart()) return Promise.resolve();
+  return window.bookStoreApi
+    .getCart()
+    .then(function (cart) {
+      items = window.bookStoreApi.mapCartPayload(cart);
+      return enrichItemsStockIfNeeded();
+    })
+    .catch(function () {
+      items = [];
+    });
+}
+
+/**
+ * پر کردن فیلد stock برای آیتم‌های سبد از API (برای سقف موجودی در UI)
+ * @returns {Promise<void>}
+ */
+function enrichItemsStockIfNeeded() {
+  if (typeof CONFIG === 'undefined' || !CONFIG.API_BASE_URL || !window.bookStoreApi) {
+    return Promise.resolve();
+  }
+  return Promise.all(
+    items.map(function (item) {
+      return window.bookStoreApi.getBookById(item.id).then(function (book) {
+        if (book && book.stock != null) {
+          item.stock = book.stock;
+        }
+      });
+    })
+  ).then(function () {
+    items.forEach(function (item) {
+      const max = effectiveStock(item);
+      if (item.quantity > max) item.quantity = max;
+    });
+    if (!usesRemoteCart()) save();
+  });
+}
+
+function mergeLocalCartToServer() {
+  if (typeof CONFIG === 'undefined' || !CONFIG.API_BASE_URL || !window.bookStoreApi) {
+    return Promise.resolve();
+  }
+  const u = userState.getUser();
+  if (!u || !u.token) return Promise.resolve();
+  const snapshot = items.map(function (i) {
+    return { ...i };
+  });
+  if (snapshot.length === 0) return syncFromServerIfNeeded();
+  return snapshot
+    .reduce(function (chain, line) {
+      return chain.then(function () {
+        return window.bookStoreApi.addToCart(line.id, line.quantity);
+      });
+    }, Promise.resolve())
+    .then(function () {
+      return syncFromServerIfNeeded();
+    })
+    .catch(function () {
+      return syncFromServerIfNeeded();
+    });
+}
+
 load();
 
-window.cart = { getItems, getCount, add, remove, setQuantity, clear };
+var cartReady = Promise.resolve();
+if (typeof window !== 'undefined' && usesRemoteCart()) {
+  cartReady = syncFromServerIfNeeded()
+    .then(function () {
+      if (window.header && header.updateBadge) header.updateBadge();
+    })
+    .catch(function () {});
+}
+
+window.cart = {
+  getItems: getItems,
+  getCount: getCount,
+  add: add,
+  remove: remove,
+  removeLine: removeLine,
+  setQuantity: setQuantity,
+  incrementQuantity: incrementQuantity,
+  clear: clear,
+  syncFromServerIfNeeded: syncFromServerIfNeeded,
+  enrichItemsStockIfNeeded: enrichItemsStockIfNeeded,
+  mergeLocalCartToServer: mergeLocalCartToServer,
+  ready: cartReady,
+};

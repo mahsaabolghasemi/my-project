@@ -11,12 +11,14 @@ body {
   margin: 0;
   font-family: var(--font-sans);
   font-size: 16px;
-  line-height: 1.5;
+  line-height: 1.6;
   color: var(--color-text);
   background: var(--color-background);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  direction: rtl;
+  text-align: right;
 }
 
 .main {
@@ -110,7 +112,71 @@ body {
   background: var(--color-background);
 }
 
-/* Badge (cart count, etc.) */
+/* Nav badges (cart & profile) */
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  color: var(--color-text);
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s;
+  box-shadow: var(--shadow-sm);
+}
+
+.nav-badge:hover {
+  background: var(--color-background);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-md);
+}
+
+.nav-badge__icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.nav-badge__label {
+  font-size: 0.9375rem;
+}
+
+.nav-badge--profile-avatar {
+  gap: var(--space-sm);
+}
+
+.nav-badge__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--color-primary), #6366f1);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.nav-badge__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 var(--space-xs);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+  background: var(--color-danger);
+  border-radius: 999px;
+  margin-right: 2px;
+}
+
+/* Badge (cart count, etc.) - legacy */
 .badge {
   display: inline-flex;
   align-items: center;

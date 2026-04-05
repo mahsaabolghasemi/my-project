@@ -24,9 +24,16 @@
   }
 
   function renderBook(book) {
-    const price = typeof formatPrice === 'function' ? formatPrice(book.price, '€') : book.price.toFixed(2);
+    const price = typeof formatPrice === 'function' ? formatPrice(book.price, 'تومان') : book.price.toFixed(2);
     const inCart = isInCart(book.id);
-    const priceDisplay = book.price === 0 ? '<span class="book-price-free">FREE</span>' : price;
+    const priceDisplay = book.price === 0 ? '<span class="book-price-free">رایگان</span>' : price;
+    const stockNum = book.stock != null && book.stock !== '' ? Number(book.stock) : null;
+    const stockLine =
+      stockNum != null && Number.isFinite(stockNum)
+        ? `<p class="pdp-stock">موجودی: ${escapeHtml(String(stockNum))} عدد</p>`
+        : '';
+    const outOfStock = stockNum != null && stockNum <= 0;
+    const addDisabled = outOfStock;
 
     return `
       <div class="pdp-container">
@@ -35,19 +42,20 @@
         </div>
         <div class="pdp-info-section">
           <h1 class="pdp-title">${escapeHtml(book.title)}</h1>
-          <p class="pdp-author">by ${escapeHtml(book.author)}</p>
+          <p class="pdp-author">نویسنده: ${escapeHtml(book.author)}</p>
           <div class="pdp-genre">${escapeHtml(book.genre)}</div>
           <div class="pdp-price">${priceDisplay}</div>
+          ${stockLine}
           <div class="pdp-description">
-            <h2>About this book</h2>
-            <p>${escapeHtml(book.description || 'No description available.')}</p>
+            <h2>دربارهٔ این کتاب</h2>
+            <p>${escapeHtml(book.description || 'توضیحی موجود نیست.')}</p>
           </div>
           <div class="pdp-actions">
             ${inCart
-              ? `<button class="btn btn--danger btn-remove" data-book-id="${escapeHtml(book.id)}">Remove from Cart</button>`
-              : `<button class="btn btn--primary btn-add" data-book-id="${escapeHtml(book.id)}">Add to Cart</button>`
+              ? `<button type="button" class="btn btn--danger btn-remove" data-book-id="${escapeHtml(book.id)}">حذف از سبد</button>`
+              : `<button type="button" class="btn btn--primary btn-add" data-book-id="${escapeHtml(book.id)}" ${addDisabled ? 'disabled' : ''}>${outOfStock ? 'ناموجود' : 'افزودن به سبد'}</button>`
             }
-            <p class="pdp-note">📚 Digital book (PDF) - Quantity: 1</p>
+            <p class="pdp-note">📚 کتاب الکترونیکی (PDF)</p>
           </div>
         </div>
       </div>
@@ -55,7 +63,7 @@
   }
 
   function showLoading() {
-    rootEl.innerHTML = '<p class="empty-state">Loading book details…</p>';
+    rootEl.innerHTML = '<p class="empty-state">در حال بارگذاری جزئیات کتاب…</p>';
   }
 
   function showError(message) {
@@ -71,7 +79,7 @@
     const addBtn = rootEl.querySelector('.btn-add');
     const removeBtn = rootEl.querySelector('.btn-remove');
 
-    if (addBtn) {
+    if (addBtn && !addBtn.disabled) {
       addBtn.addEventListener('click', function () {
         const bookId = addBtn.getAttribute('data-book-id');
         handleAddToCart(bookId);
@@ -88,76 +96,80 @@
 
   function handleAddToCart(bookId) {
     if (typeof mockApi === 'undefined' || !mockApi.getBookById) {
-      alert('Unable to add to cart. Please try again.');
+      alert('افزودن به سبد ممکن نشد. دوباره تلاش کنید.');
       return;
     }
 
     mockApi.getBookById(bookId).then(function (book) {
       if (!book) {
-        alert('Book not found.');
+        alert('کتاب یافت نشد.');
+        return;
+      }
+
+      const st = book.stock != null && book.stock !== '' ? Number(book.stock) : null;
+      if (st != null && Number.isFinite(st) && st <= 0) {
+        alert('این کتاب در انبار موجود نیست.');
         return;
       }
 
       if (typeof cart === 'undefined' || !cart.add) {
-        alert('Cart is not available.');
+        alert('سبد خرید در دسترس نیست.');
         return;
       }
 
-      cart.add(book, 1);
-      
-      // Update header badge
-      if (typeof header !== 'undefined' && header.updateBadge) {
-        header.updateBadge();
-      }
-
-      // Re-render to show "Remove" button
-      showBook(book);
+      cart.add(book, 1).then(function () {
+        if (typeof header !== 'undefined' && header.updateBadge) {
+          header.updateBadge();
+        }
+        showBook(book);
+      }).catch(function (err) {
+        alert(err && err.message ? err.message : 'افزودن به سبد ناموفق بود.');
+      });
     });
   }
 
   function handleRemoveFromCart(bookId) {
     if (typeof cart === 'undefined' || !cart.remove) {
-      alert('Cart is not available.');
+      alert('سبد خرید در دسترس نیست.');
       return;
     }
 
-    cart.remove(bookId);
-
-    // Update header badge
-    if (typeof header !== 'undefined' && header.updateBadge) {
-      header.updateBadge();
-    }
-
-    // Re-fetch book to re-render with "Add" button
-    if (typeof mockApi !== 'undefined' && mockApi.getBookById) {
-      mockApi.getBookById(bookId).then(function (book) {
-        if (book) showBook(book);
-      });
-    }
+    cart.remove(bookId).then(function () {
+      if (typeof header !== 'undefined' && header.updateBadge) {
+        header.updateBadge();
+      }
+      if (typeof mockApi !== 'undefined' && mockApi.getBookById) {
+        mockApi.getBookById(bookId).then(function (book) {
+          if (book) showBook(book);
+        });
+      }
+    }).catch(function (err) {
+      alert(err && err.message ? err.message : 'به‌روزرسانی سبد ناموفق بود.');
+    });
   }
 
   // Load book
   const bookId = getBookId();
   if (!bookId) {
-    showError('No book ID provided. Please select a book from the home page.');
+    showError('شناسهٔ کتاب مشخص نیست. از صفحهٔ اصلی یک کتاب انتخاب کنید.');
     return;
   }
 
   showLoading();
 
   if (typeof mockApi === 'undefined' || !mockApi.getBookById) {
-    showError('API not available.');
+    showError('API در دسترس نیست.');
     return;
   }
 
   mockApi.getBookById(bookId).then(function (book) {
     if (!book) {
-      showError('Book not found.');
+      showError('کتاب یافت نشد.');
       return;
     }
     showBook(book);
   }).catch(function (err) {
-    showError('Failed to load book details. Please try again.');
+    showError('بارگذاری جزئیات کتاب ناموفق بود. دوباره تلاش کنید.');
     console.error(err);
   });
 })();

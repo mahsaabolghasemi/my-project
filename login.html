@@ -1,36 +1,55 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MiniBookstore — Login</title>
-  <link rel="stylesheet" href="css/variables.css" />
-  <link rel="stylesheet" href="css/layout.css" />
-  <link rel="stylesheet" href="css/components.css" />
-</head>
-<body>
-  <div id="header-container"></div>
-  <main class="main">
-    <div class="login-container">
-      <h1 class="page-title">Login</h1>
-      <form id="login-form" class="login-form">
-        <div class="form-group">
-          <label for="email">Email</label>
-          <input type="email" id="email" name="email" required autocomplete="email" />
-        </div>
-        <div class="form-group">
-          <label for="password">Password</label>
-          <input type="password" id="password" name="password" required autocomplete="current-password" />
-        </div>
-        <button type="submit" class="btn btn--primary btn-login">Login</button>
-        <p class="login-note">Note: This is a demo. Any email/password will work.</p>
-      </form>
-    </div>
-  </main>
-  <script src="js/config.js"></script>
-  <script src="js/state/user.js"></script>
-  <script src="js/utils.js"></script>
-  <script src="js/components/header.js"></script>
-  <script src="js/pages/login.js"></script>
-</body>
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>کتابفروشی — ورود</title>
+    <link rel="stylesheet" href="css/variables.css" />
+    <link rel="stylesheet" href="css/layout.css" />
+    <link rel="stylesheet" href="css/components.css" />
+    <link rel="stylesheet" href="css/login.css" />
+  </head>
+  <body>
+    <div id="header-container"></div>
+    <main class="main login-page">
+      <div class="login-container">
+        <h1 class="page-title">ورود</h1>
+        <p class="login-lead">فقط کاربران تعریف‌شده در لیست سفید مجاز به ورود هستند.</p>
+        <div id="login-error" class="login-error" role="alert" aria-live="polite"></div>
+        <form id="login-form" class="login-form" novalidate>
+          <div class="form-group">
+            <label for="username">نام کاربری</label>
+            <input
+              type="text"
+              id="username"
+              name="username"
+              required
+              autocomplete="username"
+              placeholder="مثلاً tina"
+            />
+          </div>
+          <div class="form-group">
+            <label for="password">رمز عبور</label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              required
+              autocomplete="current-password"
+            />
+          </div>
+          <button type="submit" class="btn btn--primary btn-login">ورود</button>
+          <p class="login-note">ثبت‌نام در این نسخه وجود ندارد. در صورت نیاز با مدیر سیستم تماس بگیرید.</p>
+        </form>
+      </div>
+    </main>
+    <script src="js/config.js"></script>
+    <script src="src/data/users.data.js"></script>
+    <script src="js/api/bookStoreApi.js"></script>
+    <script src="js/state/user.js"></script>
+    <script src="js/state/cart.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/components/header.js"></script>
+    <script src="js/pages/login.js"></script>
+  </body>
 </html>

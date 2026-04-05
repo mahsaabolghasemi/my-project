@@ -4,14 +4,15 @@
  * can show "Download PDF" for purchased books (digital delivery, no shipping).
  */
 
-const STORAGE_KEY = typeof CONFIG !== 'undefined' ? CONFIG.ORDERS_STORAGE_KEY : 'minishop_orders';
+/** Must be unique per file — duplicate `const` names across classic scripts break the whole page. */
+const ORDERS_STATE_STORAGE_KEY = typeof CONFIG !== 'undefined' ? CONFIG.ORDERS_STORAGE_KEY : 'minishop_orders';
 
 /** @type {Array<{ id: string, date: string, items: Array<{ id: string, name: string, price: number, quantity: number, pdfUrl?: string }>, total: number }>} */
 let orders = [];
 
 function load() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(ORDERS_STATE_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) orders = parsed;
@@ -23,7 +24,7 @@ function load() {
 
 function save() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+    localStorage.setItem(ORDERS_STATE_STORAGE_KEY, JSON.stringify(orders));
   } catch (_) {}
 }
 

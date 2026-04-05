@@ -1,20 +1,46 @@
 /**
- * User state: login/logout, user details.
- * Persisted in localStorage so user stays logged in across page refreshes.
+ * User state: whitelist login (src/data/users.data.js) + optional API token when CONFIG.API_BASE_URL is set.
  */
 
-const STORAGE_KEY = typeof CONFIG !== 'undefined' ? CONFIG.USER_STORAGE_KEY : 'minishop_user';
+/** Must be unique per file — duplicate `const` names across classic scripts break the whole page. */
+const USER_STATE_STORAGE_KEY = typeof CONFIG !== 'undefined' ? CONFIG.USER_STORAGE_KEY : 'minishop_user';
 
-/** @type {{ id: string, email: string, name: string } | null} */
+/** @type {{ id: string, email?: string, name?: string, username?: string, token?: string } | null} */
 let currentUser = null;
+
+function usesRemoteAuth() {
+  return (
+    typeof CONFIG !== 'undefined' &&
+    CONFIG.API_BASE_URL &&
+    typeof window.bookStoreApi !== 'undefined'
+  );
+}
+
+function findWhitelistUser(username, password) {
+  const list =
+    typeof window.MINISHOP_USERS_WHITELIST !== 'undefined' && Array.isArray(window.MINISHOP_USERS_WHITELIST)
+      ? window.MINISHOP_USERS_WHITELIST
+      : [];
+  const u = (username || '').trim();
+  return list.find(function (x) {
+    return x.username === u && x.password === password;
+  }) || null;
+}
 
 function load() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(USER_STATE_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed && parsed.id && parsed.email) {
-        currentUser = parsed;
+      if (parsed && parsed.id && parsed.username) {
+        currentUser = {
+          id: String(parsed.id),
+          username: parsed.username,
+          name: parsed.name || parsed.username,
+          email: parsed.email || parsed.username + '@local',
+          token: parsed.token || undefined,
+        };
+        ensureName();
       }
     }
   } catch (_) {
@@ -22,66 +48,92 @@ function load() {
   }
 }
 
+function ensureName() {
+  if (!currentUser) return;
+  if (!currentUser.name && currentUser.username) {
+    currentUser.name = currentUser.username;
+  }
+}
+
 function save() {
   try {
     if (currentUser) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(currentUser));
+      ensureName();
+      localStorage.setItem(USER_STATE_STORAGE_KEY, JSON.stringify(currentUser));
     } else {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(USER_STATE_STORAGE_KEY);
     }
   } catch (_) {}
 }
 
 /**
- * Get current logged-in user.
- * @returns {{ id: string, email: string, name: string } | null}
+ * @returns {{ id: string, email: string, name: string, username?: string, token?: string } | null}
  */
 function getUser() {
   return currentUser ? { ...currentUser } : null;
 }
 
-/**
- * Check if user is logged in.
- * @returns {boolean}
- */
 function isLoggedIn() {
   return currentUser !== null;
 }
 
 /**
- * Login a user.
- * @param {string} email
- * @param {string} password - Not validated in mock; in real app would verify with backend.
- * @returns {Promise<{ success: boolean, user?: { id: string, email: string, name: string }, error?: string }>}
+ * @param {string} username
+ * @param {string} password
+ * @returns {Promise<{ success: boolean, user?: object, error?: string }>}
  */
-function login(email, password) {
-  return new Promise(function (resolve) {
-    // Simulate API delay
-    setTimeout(function () {
-      if (!email || !password) {
-        resolve({ success: false, error: 'Email and password are required.' });
-        return;
-      }
+function login(username, password) {
+  const trimmed = (username || '').trim();
+  if (!trimmed || !password) {
+    return Promise.resolve({ success: false, error: 'نام کاربری و رمز عبور الزامی است.' });
+  }
 
-      // Mock: accept any email/password, create user
-      const name = email.split('@')[0] || 'User';
-      currentUser = {
-        id: 'user_' + Date.now(),
-        email: email,
-        name: name,
-      };
-      save();
-      resolve({ success: true, user: { ...currentUser } });
-    }, 300);
-  });
+  const w = findWhitelistUser(trimmed, password);
+  if (!w) {
+    return Promise.resolve({ success: false, error: 'کاربری شما مجاز نمیباشد' });
+  }
+
+  currentUser = {
+    id: String(w.id),
+    username: w.username,
+    name: w.name,
+    email: w.username + '@local',
+  };
+  ensureName();
+  save();
+
+  if (usesRemoteAuth()) {
+    return window.bookStoreApi
+      .login(trimmed, password)
+      .then(function (data) {
+        currentUser.token = data.token;
+        save();
+        var merge =
+          typeof window.cart !== 'undefined' && window.cart.mergeLocalCartToServer
+            ? window.cart.mergeLocalCartToServer()
+            : Promise.resolve();
+        return merge.then(function () {
+          return { success: true, user: getUser() };
+        });
+      })
+      .catch(function () {
+        return { success: true, user: getUser() };
+      });
+  }
+
+  return Promise.resolve({ success: true, user: getUser() });
 }
 
-/**
- * Logout current user.
- */
 function logout() {
+  if (usesRemoteAuth() && currentUser && currentUser.token) {
+    return window.bookStoreApi.logoutRemote().finally(function () {
+      currentUser = null;
+      save();
+    });
+  }
   currentUser = null;
   save();
+  return Promise.resolve();
 }
 
 load();

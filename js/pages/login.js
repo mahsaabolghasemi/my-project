@@ -1,41 +1,48 @@
 /**
- * Login page: handle user login.
+ * Login: whitelist only (src/data/users.data.js).
  */
 (function () {
   const form = document.getElementById('login-form');
+  const errorEl = document.getElementById('login-error');
   if (!form) return;
+
+  function showError(msg) {
+    if (!errorEl) return;
+    errorEl.textContent = msg || '';
+    errorEl.classList.toggle('is-visible', !!msg);
+  }
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
+    showError('');
 
-    const email = form.querySelector('#email').value.trim();
+    const username = form.querySelector('#username').value.trim();
     const password = form.querySelector('#password').value;
 
-    if (!email || !password) {
-      alert('Please enter both email and password.');
+    if (!username || !password) {
+      showError('نام کاربری و رمز عبور الزامی است.');
       return;
     }
 
     const submitBtn = form.querySelector('.btn-login');
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Logging in…';
+    submitBtn.textContent = 'در حال ورود…';
 
     if (typeof userState === 'undefined' || !userState.login) {
-      alert('Login service is not available.');
+      showError('سرویس ورود در دسترس نیست.');
       submitBtn.disabled = false;
-      submitBtn.textContent = 'Login';
+      submitBtn.textContent = 'ورود';
       return;
     }
 
-    userState.login(email, password).then(function (result) {
+    userState.login(username, password).then(function (result) {
       if (result.success) {
-        // Redirect to home or previous page
         const returnUrl = new URLSearchParams(window.location.search).get('return') || 'index.html';
         window.location.href = returnUrl;
       } else {
-        alert(result.error || 'Login failed. Please try again.');
+        showError(result.error || 'ورود ناموفق بود.');
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Login';
+        submitBtn.textContent = 'ورود';
       }
     });
   });
