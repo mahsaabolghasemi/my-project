@@ -30,6 +30,10 @@ function effectiveStock(line) {
 
 function load() {
   try {
+    if (typeof userState !== 'undefined' && userState.isLoggedIn && !userState.isLoggedIn()) {
+      items = [];
+      return;
+    }
     if (usesRemoteCart()) {
       items = [];
       return;
@@ -46,6 +50,7 @@ function load() {
 
 function save() {
   if (usesRemoteCart()) return;
+  if (typeof userState !== 'undefined' && userState.isLoggedIn && !userState.isLoggedIn()) return;
   try {
     localStorage.setItem(CART_STATE_STORAGE_KEY, JSON.stringify(items));
   } catch (_) {}
@@ -69,6 +74,14 @@ function getCount() {
  * @returns {Promise<void>}
  */
 function add(book, quantity) {
+  if (
+    typeof userState === 'undefined' ||
+    !userState.isLoggedIn ||
+    !userState.isLoggedIn()
+  ) {
+    return Promise.reject(new Error('برای افزودن به سبد ابتدا وارد شوید.'));
+  }
+
   const qty = quantity == null || quantity < 1 ? 1 : quantity;
   const name = book.name != null ? book.name : book.title;
   var rawStock = book.stock != null && book.stock !== '' ? Number(book.stock) : NaN;

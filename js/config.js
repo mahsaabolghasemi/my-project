@@ -4,13 +4,16 @@
  */
 const CONFIG = {
   /**
-   * Book Store API base. Example (LAN dev server): http://192.168.9.183:3000
-   * Leave empty to use the in-browser mock (js/api/mockApi.js).
+   * Book Store API base (OpenAPI). Set e.g. http://localhost:3000 for real login + token.
+   * Leave '' to use js/api/mockApi.js only (no backend, no token).
    */
   API_BASE_URL: '',
-  /** Header name for the session token (default Authorization). */
+  /**
+   * How the session token is sent. Most backends: "Authorization" + "Bearer " + token.
+   * If your server expects the raw token only, set API_AUTH_TOKEN_PREFIX to "".
+   * If it uses a custom header (e.g. "token"), set API_AUTH_HEADER to that name and prefix to "".
+   */
   API_AUTH_HEADER: 'Authorization',
-  /** Prefix before the token (default "Bearer "). Set to "" to send the raw token. */
   API_AUTH_TOKEN_PREFIX: 'Bearer ',
   /** Key used to persist cart in localStorage. */
   CART_STORAGE_KEY: 'minishop_cart',

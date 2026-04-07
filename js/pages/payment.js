@@ -13,6 +13,11 @@
     );
   }
 
+  if (typeof userState === 'undefined' || !userState.isLoggedIn || !userState.isLoggedIn()) {
+    window.location.href = 'login.html?return=' + encodeURIComponent('payment.html');
+    return;
+  }
+
   if (usesRemoteApi()) {
     const u = typeof userState !== 'undefined' && userState.getUser ? userState.getUser() : null;
     if (!u || !u.token) {

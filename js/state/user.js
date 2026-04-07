@@ -1,5 +1,6 @@
 /**
- * User state: whitelist login (src/data/users.data.js) + optional API token when CONFIG.API_BASE_URL is set.
+ * User state: with API_BASE_URL → login only via POST /auth/login (token required).
+ * Without API → whitelist (src/data/users.data.js).
  */
 
 /** Must be unique per file — duplicate `const` names across classic scripts break the whole page. */
@@ -88,6 +89,42 @@ function login(username, password) {
     return Promise.resolve({ success: false, error: 'نام کاربری و رمز عبور الزامی است.' });
   }
 
+  if (usesRemoteAuth()) {
+    return window.bookStoreApi
+      .login(trimmed, password)
+      .then(function (data) {
+        var token = data && data.token ? String(data.token).trim() : '';
+        if (!token) {
+          return { success: false, error: 'سرور توکن معتبر ارسال نکرد. پاسخ ورود را در کنسول بررسی کنید.' };
+        }
+        const u = data.user || {};
+        currentUser = {
+          id: String(u.id != null ? u.id : trimmed),
+          username: u.username != null ? String(u.username) : trimmed,
+          name: u.name || u.username || trimmed,
+          email: (u.username || trimmed) + '@local',
+          token: token,
+        };
+        ensureName();
+        save();
+        var merge =
+          typeof window.cart !== 'undefined' && window.cart.mergeLocalCartToServer
+            ? window.cart.mergeLocalCartToServer()
+            : Promise.resolve();
+        return merge
+          .then(function () {
+            return { success: true, user: getUser() };
+          })
+          .catch(function () {
+            return { success: true, user: getUser() };
+          });
+      })
+      .catch(function (err) {
+        var msg = err && err.message ? err.message : 'ورود ناموفق بود.';
+        return { success: false, error: msg };
+      });
+  }
+
   const w = findWhitelistUser(trimmed, password);
   if (!w) {
     return Promise.resolve({ success: false, error: 'کاربری شما مجاز نمیباشد' });
@@ -101,25 +138,6 @@ function login(username, password) {
   };
   ensureName();
   save();
-
-  if (usesRemoteAuth()) {
-    return window.bookStoreApi
-      .login(trimmed, password)
-      .then(function (data) {
-        currentUser.token = data.token;
-        save();
-        var merge =
-          typeof window.cart !== 'undefined' && window.cart.mergeLocalCartToServer
-            ? window.cart.mergeLocalCartToServer()
-            : Promise.resolve();
-        return merge.then(function () {
-          return { success: true, user: getUser() };
-        });
-      })
-      .catch(function () {
-        return { success: true, user: getUser() };
-      });
-  }
 
   return Promise.resolve({ success: true, user: getUser() });
 }

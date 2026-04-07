@@ -1,7 +1,13 @@
 /**
- * Login: whitelist only (src/data/users.data.js).
+ * Login: با API توکن از سرور؛ بدون API whitelist. اگر قبلاً وارد شده‌اید، ورود مجدد ممکن نیست.
  */
 (function () {
+  if (typeof userState !== 'undefined' && userState.isLoggedIn && userState.isLoggedIn()) {
+    var ru = new URLSearchParams(window.location.search).get('return') || 'index.html';
+    window.location.replace(ru);
+    return;
+  }
+
   const form = document.getElementById('login-form');
   const errorEl = document.getElementById('login-error');
   if (!form) return;

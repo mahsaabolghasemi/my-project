@@ -48,9 +48,18 @@
     }
   }
 
+  /**
+   * API may return snake_case (is_deleted) per OpenAPI Book schema.
+   */
+  function rawDeletedFlag(b) {
+    if (!b) return 0;
+    var v = b.is_deleted != null ? b.is_deleted : b.isDeleted;
+    return Number(v) === 1 ? 1 : 0;
+  }
+
   function normalizeBook(b) {
     if (!b) return null;
-    if (Number(b.isDeleted) === 1) return null;
+    if (rawDeletedFlag(b) === 1) return null;
     const root = baseUrl();
     const id = String(b.id);
     let coverImage = b.image || '';
@@ -70,7 +79,42 @@
       description: b.description || '',
       pdfUrl: '#',
       stock: typeof b.stock === 'number' ? b.stock : b.stock != null ? Number(b.stock) : undefined,
-      isDeleted: Number(b.isDeleted) === 1 ? 1 : 0,
+      isDeleted: rawDeletedFlag(b),
+    };
+  }
+
+  /**
+   * LoginResponse: { message, token, user } — some servers use access_token or nest data.
+   */
+  function extractLoginPayload(data) {
+    if (!data || typeof data !== 'object') {
+      return { token: null, user: {}, message: '' };
+    }
+    var token =
+      data.token ||
+      data.access_token ||
+      data.accessToken ||
+      data.sessionToken ||
+      (data.data && (data.data.token || data.data.access_token));
+    if (token != null && token !== '') {
+      token = String(token).trim();
+    } else {
+      token = null;
+    }
+    var user = data.user;
+    if (!user && data.data && typeof data.data === 'object' && !Array.isArray(data.data)) {
+      user = data.data.user || data.data;
+    }
+    if (!user || typeof user !== 'object') {
+      user = {};
+    }
+    if (user && Object.keys(user).length === 0 && (data.id != null || data.username)) {
+      user = { id: data.id, username: data.username };
+    }
+    return {
+      token: token,
+      user: user,
+      message: data.message || '',
     };
   }
 
@@ -113,18 +157,18 @@
   function login(username, password) {
     return fetch(baseUrl() + '/auth/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ username: username, password: password }),
     }).then(async function (res) {
       const data = await parseBody(res);
       if (!res.ok) {
         throw new Error(data.message || 'ورود ناموفق بود.');
       }
-      return {
-        token: data.token,
-        user: data.user,
-        message: data.message,
-      };
+      const parsed = extractLoginPayload(data);
+      if (!parsed.token) {
+        console.warn('[bookStoreApi] Login 200 but no token in response:', data);
+      }
+      return parsed;
     });
   }
 
@@ -268,6 +312,7 @@
 
   window.bookStoreApi = {
     baseUrl: baseUrl,
+    extractLoginPayload: extractLoginPayload,
     normalizeBook: normalizeBook,
     mapCartPayload: mapCartPayload,
     mapOrder: mapOrder,

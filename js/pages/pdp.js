@@ -18,8 +18,8 @@
   }
 
   function isInCart(bookId) {
-    if (typeof cart === 'undefined' || !cart.getItems) return false;
-    const items = cart.getItems();
+    if (typeof window.cart === 'undefined' || !window.cart.getItems) return false;
+    const items = window.cart.getItems();
     return items.some((item) => item.id === bookId);
   }
 
@@ -34,6 +34,7 @@
         : '';
     const outOfStock = stockNum != null && stockNum <= 0;
     const addDisabled = outOfStock;
+    const outOfStockLabel = 'اتمام موجودی';
 
     return `
       <div class="pdp-container">
@@ -53,7 +54,7 @@
           <div class="pdp-actions">
             ${inCart
               ? `<button type="button" class="btn btn--danger btn-remove" data-book-id="${escapeHtml(book.id)}">حذف از سبد</button>`
-              : `<button type="button" class="btn btn--primary btn-add" data-book-id="${escapeHtml(book.id)}" ${addDisabled ? 'disabled' : ''}>${outOfStock ? 'ناموجود' : 'افزودن به سبد'}</button>`
+              : `<button type="button" class="btn btn--primary btn-add" data-book-id="${escapeHtml(book.id)}" ${addDisabled ? 'disabled' : ''}>${outOfStock ? outOfStockLabel : 'افزودن به سبد'}</button>`
             }
             <p class="pdp-note">📚 کتاب الکترونیکی (PDF)</p>
           </div>
@@ -94,7 +95,17 @@
     }
   }
 
+  function isLoggedIn() {
+    return typeof userState !== 'undefined' && userState.isLoggedIn && userState.isLoggedIn();
+  }
+
   function handleAddToCart(bookId) {
+    if (!isLoggedIn()) {
+      window.location.href =
+        'login.html?return=' + encodeURIComponent('pdp.html?id=' + encodeURIComponent(bookId));
+      return;
+    }
+
     if (typeof mockApi === 'undefined' || !mockApi.getBookById) {
       alert('افزودن به سبد ممکن نشد. دوباره تلاش کنید.');
       return;
@@ -108,20 +119,30 @@
 
       const st = book.stock != null && book.stock !== '' ? Number(book.stock) : null;
       if (st != null && Number.isFinite(st) && st <= 0) {
-        alert('این کتاب در انبار موجود نیست.');
+        alert('این محصول ناموجود است.');
         return;
       }
 
-      if (typeof cart === 'undefined' || !cart.add) {
+      if (typeof window.cart === 'undefined' || !window.cart.getItems || !window.cart.add) {
         alert('سبد خرید در دسترس نیست.');
         return;
       }
 
-      cart.add(book, 1).then(function () {
+      var cartItems = window.cart.getItems();
+      var line = cartItems.find(function (i) {
+        return String(i.id) === String(book.id);
+      });
+      var curQty = line ? line.quantity : 0;
+      if (st != null && Number.isFinite(st) && curQty + 1 > st) {
+        alert('تعداد درخواستی بیشتر از موجودی انبار است.');
+        return;
+      }
+
+      window.cart.add(book, 1).then(function () {
         if (typeof header !== 'undefined' && header.updateBadge) {
           header.updateBadge();
         }
-        showBook(book);
+        window.location.href = 'cart.html';
       }).catch(function (err) {
         alert(err && err.message ? err.message : 'افزودن به سبد ناموفق بود.');
       });
@@ -129,12 +150,18 @@
   }
 
   function handleRemoveFromCart(bookId) {
-    if (typeof cart === 'undefined' || !cart.remove) {
+    if (!isLoggedIn()) {
+      window.location.href =
+        'login.html?return=' + encodeURIComponent('pdp.html?id=' + encodeURIComponent(bookId));
+      return;
+    }
+
+    if (typeof window.cart === 'undefined' || !window.cart.remove) {
       alert('سبد خرید در دسترس نیست.');
       return;
     }
 
-    cart.remove(bookId).then(function () {
+    window.cart.remove(bookId).then(function () {
       if (typeof header !== 'undefined' && header.updateBadge) {
         header.updateBadge();
       }
@@ -164,7 +191,11 @@
 
   mockApi.getBookById(bookId).then(function (book) {
     if (!book) {
-      showError('کتاب یافت نشد.');
+      showError('این کالا وجود ندارد یا حذف شده است. (۴۰۴)');
+      return;
+    }
+    if (Number(book.isDeleted) === 1) {
+      showError('این کالا وجود ندارد یا حذف شده است. (۴۰۴)');
       return;
     }
     showBook(book);
