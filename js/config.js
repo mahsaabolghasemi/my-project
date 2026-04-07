@@ -7,7 +7,7 @@ const CONFIG = {
    * Book Store API base (OpenAPI). Set e.g. http://localhost:3000 for real login + token.
    * Leave '' to use js/api/mockApi.js only (no backend, no token).
    */
-  API_BASE_URL: '',
+  API_BASE_URL: 'http://192.168.9.81:3000',
   /**
    * How the session token is sent. Most backends: "Authorization" + "Bearer " + token.
    * If your server expects the raw token only, set API_AUTH_TOKEN_PREFIX to "".
