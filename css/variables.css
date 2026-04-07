@@ -16,7 +16,7 @@
   --color-accent: #EC4899;
   --color-warning: #F59E0B;
 
-  --font-sans: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --font-sans: Tahoma, Vazir, system-ui, -apple-system, sans-serif;
   --font-mono: ui-monospace, monospace;
 
   --space-xs: 0.25rem;

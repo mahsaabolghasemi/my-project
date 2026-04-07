@@ -14,14 +14,15 @@
   }
 
   function getQuery() {
-    return typeof getQueryParam === 'function' ? getQueryParam('q') : null;
+    var params = new URLSearchParams(window.location.search);
+    return params.get('q');
   }
 
   function renderBook(book) {
     const price = typeof formatPrice === 'function' && window.formatPrice
-      ? window.formatPrice(book.price, '€')
+      ? window.formatPrice(book.price, 'تومان')
       : book.price.toFixed(2);
-    const priceDisplay = book.price === 0 ? '<span class="book-price-free">FREE</span>' : price;
+    const priceDisplay = book.price === 0 ? '<span class="book-price-free">رایگان</span>' : price;
     
     return `
       <article class="product-card">
@@ -38,7 +39,7 @@
   }
 
   function showLoading() {
-    gridEl.innerHTML = '<p class="empty-state">Searching books…</p>';
+    gridEl.innerHTML = '<p class="empty-state">در حال جستجو…</p>';
   }
 
   function showError(message) {
@@ -47,15 +48,15 @@
 
   function showBooks(books, query) {
     if (!books || books.length === 0) {
-      const queryText = query ? ` for "${escapeHtml(query)}"` : '';
+      const queryText = query ? ` برای «${escapeHtml(query)}»` : '';
       gridEl.innerHTML = `
         <div class="empty-state">
-          <p>No books found${queryText}.</p>
-          <a href="index.html" class="btn btn--primary">Browse All Books</a>
+          <p>کتابی یافت نشد${queryText}.</p>
+          <a href="index.html" class="btn btn--primary">مشاهدهٔ همهٔ کتاب‌ها</a>
         </div>
       `;
       if (titleEl) {
-        titleEl.textContent = query ? `Search results for "${escapeHtml(query)}"` : 'Search results';
+        titleEl.textContent = query ? `نتیجهٔ جستجو برای «${escapeHtml(query)}»` : 'نتیجهٔ جستجو';
       }
       return;
     }
@@ -65,8 +66,8 @@
     if (titleEl) {
       const count = books.length;
       titleEl.textContent = query
-        ? `Search results for "${escapeHtml(query)}" (${count} ${count === 1 ? 'book' : 'books'})`
-        : `All Books (${count})`;
+        ? `نتیجهٔ جستجو برای «${escapeHtml(query)}» (${count} کتاب)`
+        : `همهٔ کتاب‌ها (${count})`;
     }
   }
 
@@ -76,14 +77,14 @@
   showLoading();
 
   if (typeof mockApi === 'undefined' || !mockApi.searchBooks) {
-    showError('Search is not available.');
+    showError('جستجو در دسترس نیست.');
     return;
   }
 
   mockApi.searchBooks(query).then(function (books) {
     showBooks(books, query);
   }).catch(function (err) {
-    showError('Failed to search books. Please try again.');
+    showError('جستجو ناموفق بود. دوباره تلاش کنید.');
     console.error(err);
   });
 })();

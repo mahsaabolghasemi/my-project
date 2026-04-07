@@ -1,0 +1,100 @@
+/**
+ * Profile + order history (profile.html)
+ */
+
+.profile-page {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.profile-page__title {
+  margin: 0 0 var(--space-xl);
+  font-size: 1.75rem;
+  color: var(--color-primary);
+}
+
+.profile-view {
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  margin-bottom: var(--space-xl);
+  box-shadow: var(--shadow-md);
+}
+
+.profile-view__heading {
+  margin: 0 0 var(--space-lg);
+  font-size: 1.25rem;
+  color: var(--color-text);
+}
+
+.profile-fields {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.profile-field label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.profile-field__value {
+  font-size: 1.05rem;
+  color: var(--color-text);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-background);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
+.profile-field__value--masked {
+  letter-spacing: 0.15em;
+  font-family: ui-monospace, monospace;
+}
+
+.profile-page__actions {
+  margin-top: var(--space-lg);
+}
+
+.profile-order-history {
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  box-shadow: var(--shadow-md);
+}
+
+.profile-order-history__title {
+  margin: 0 0 var(--space-lg);
+  font-size: 1.25rem;
+  color: var(--color-primary);
+}
+
+.profile-order-history .orders-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.profile-order-history .orders-table th,
+.profile-order-history .orders-table td {
+  padding: var(--space-sm) var(--space-md);
+  text-align: right;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.profile-order-history .orders-table th {
+  font-weight: 600;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+#order-detail-container {
+  margin-top: var(--space-lg);
+}
