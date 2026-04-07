@@ -215,6 +215,42 @@
   color: var(--color-text-muted);
 }
 
+.pdp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.pdp-qty-control {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  background: var(--color-background);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-xs) var(--space-sm);
+}
+
+.pdp-qty__value {
+  min-width: 2.5rem;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.125rem;
+}
+
+.pdp-qty__btn {
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  font-size: 1.125rem;
+}
+
+.pdp-qty__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .cart-summary {
   background: linear-gradient(135deg, #F0F4FF, #E0E7FF);
   padding: var(--space-xl);

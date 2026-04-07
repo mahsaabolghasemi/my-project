@@ -135,6 +135,7 @@ function login(username, password) {
     username: w.username,
     name: w.name,
     email: w.username + '@local',
+    token: 'mock-' + w.id + '-' + Date.now(),
   };
   ensureName();
   save();
