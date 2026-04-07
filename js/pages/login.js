@@ -50,6 +50,10 @@
         submitBtn.disabled = false;
         submitBtn.textContent = 'ورود';
       }
+    }).catch(function (err) {
+      showError(err && err.message ? err.message : 'خطایی رخ داد. دوباره تلاش کنید.');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'ورود';
     });
   });
 })();

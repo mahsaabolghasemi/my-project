@@ -150,12 +150,29 @@
     };
   }
 
+  var FETCH_TIMEOUT_MS = 15000;
+
+  function fetchWithTimeout(url, options) {
+    var controller = new AbortController();
+    var timerId = setTimeout(function () { controller.abort(); }, FETCH_TIMEOUT_MS);
+    var opts = Object.assign({}, options, { signal: controller.signal });
+    return fetch(url, opts)
+      .then(function (res) { clearTimeout(timerId); return res; })
+      .catch(function (err) {
+        clearTimeout(timerId);
+        if (err && err.name === 'AbortError') {
+          throw new Error('سرور پاسخ نمی‌دهد. اتصال شبکه را بررسی کنید.');
+        }
+        throw new Error('خطای شبکه: سرور در دسترس نیست.');
+      });
+  }
+
   /**
    * @param {string} username
    * @param {string} password
    */
   function login(username, password) {
-    return fetch(baseUrl() + '/auth/login', {
+    return fetchWithTimeout(baseUrl() + '/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ username: username, password: password }),
@@ -175,7 +192,7 @@
   function logoutRemote() {
     const t = getToken();
     if (!t) return Promise.resolve();
-    return fetch(baseUrl() + '/auth/logout', {
+    return fetchWithTimeout(baseUrl() + '/auth/logout', {
       method: 'POST',
       headers: authHeaders(t),
     }).then(function () {});
