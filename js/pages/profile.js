@@ -18,12 +18,18 @@
     if (userEl) userEl.textContent = user.username || '—';
   }
 
-  const logoutBtn = document.getElementById('btn-profile-logout');
+  var logoutBtn = document.getElementById('btn-profile-logout');
   if (logoutBtn) {
     logoutBtn.addEventListener('click', function () {
-      Promise.resolve(userState.logout()).then(function () {
-        window.location.href = 'index.html';
-      });
+      logoutBtn.disabled = true;
+      logoutBtn.textContent = 'در حال خروج…';
+      Promise.resolve(userState.logout())
+        .then(function () {
+          window.location.href = 'index.html';
+        })
+        .catch(function () {
+          window.location.href = 'index.html';
+        });
     });
   }
 
